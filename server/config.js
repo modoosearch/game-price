@@ -24,8 +24,8 @@ module.exports = {
       opt1: '',
       opt2: '', opt3: '', opt4: '', opt5: '', opt6: '', opt7: '', opt8: '', opt9: '', opt10: ''
     },
-    /** 서버에서 헤드리스 브라우저로 수집 (고객 확장 설치 불필요) */
-    useBrowserParser: true,
+    /** 서버에서 헤드리스 브라우저로 수집. Render 등 Chromium 없는 환경은 USE_BROWSER_PARSER=true 로 두지 말 것 (기본 axios 수집) */
+    useBrowserParser: process.env.USE_BROWSER_PARSER === 'true',
     /** 서버 간 이동 딜레이(ms). 트래픽 부담 완화 */
     serverDelayMs: 2500,
     /** 페이지 로드 대기(ms) */

@@ -1,8 +1,7 @@
-/** 배포 시 API 주소. 빌드 시 지정: VITE_API_BASE=https://노드서버주소 npm run build */
-const DEFAULT_API_BASE = 'https://weddingalarm.kr/test';
+/** 배포 시 API 주소. 같은 서버에 올리면 비워두고, 프론트만 다른 호스트면 VITE_API_BASE=https://노드서버주소 로 빌드 */
 const API_BASE = import.meta.env.DEV
   ? ''
-  : (import.meta.env.VITE_API_BASE || DEFAULT_API_BASE);
+  : (import.meta.env.VITE_API_BASE ?? '');
 
 export async function getSummary() {
   const r = await fetch(`${API_BASE}/api/summary`);
@@ -50,6 +49,6 @@ export function getWsUrl() {
     const base = window.location.port === '3000' ? 'ws://localhost:4000' : window.location.origin.replace(/^http/, 'ws');
     return `${base}/ws`;
   }
-  const base = import.meta.env.VITE_API_BASE || DEFAULT_API_BASE;
+  const base = import.meta.env.VITE_API_BASE ?? '';
   return base.replace(/^http/, 'ws') + '/ws';
 }
