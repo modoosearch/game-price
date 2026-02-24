@@ -1,0 +1,159 @@
+const config = require('./config');
+const barotemParser = require('./parsers/barotem');
+const barotemBrowser = require('./parsers/barotem-browser');
+
+const priceHistory = { barotem: [] };
+const MAX_HISTORY = 24 * 60;
+const recentTrades = [];
+const MAX_TRADES = 500;
+let lastBarotemByServer = [];
+const chatMessages = [];
+const MAX_CHAT = 200;
+
+let currentDayKey = getCurrentDayKey();
+
+function getCurrentDayKey() {
+  const now = new Date();
+  return now.toISOString().slice(0, 10);
+}
+
+function resetIfNewDay() {
+  const today = getCurrentDayKey();
+  if (today === currentDayKey) return;
+  currentDayKey = today;
+
+  Object.keys(priceHistory).forEach((source) => {
+    priceHistory[source] = [];
+  });
+  recentTrades.length = 0;
+  lastBarotemByServer = [];
+}
+
+function addPriceSnapshot(source, data) {
+  if (!priceHistory[source]) priceHistory[source] = [];
+  const list = priceHistory[source];
+  const now = new Date();
+  const snapshot = {
+    time: now.toISOString(),
+    ts: now.getTime(),
+    avgPrice: data.avgPrice ?? 0,
+    totalQuantity: data.totalQuantity ?? 0,
+    totalAmount: data.totalAmount ?? 0,
+    count: data.count ?? 0,
+    items: data.items ?? []
+  };
+  list.push(snapshot);
+  if (list.length > MAX_HISTORY) list.shift();
+  return snapshot;
+}
+
+function addTrades(source, items) {
+  const now = new Date().toISOString();
+  items.forEach((item, i) => {
+    recentTrades.unshift({
+      id: `${source}-${now}-${i}`,
+      source,
+      quantity: item.quantity,
+      price: item.price,
+      time: now,
+      serverCode: item.serverCode
+    });
+  });
+  while (recentTrades.length > MAX_TRADES) recentTrades.pop();
+}
+
+function getPriceHistory(source, fromTs) {
+  const list = priceHistory[source] || [];
+  if (fromTs) return list.filter((s) => s.ts >= fromTs);
+  return [...list];
+}
+
+function getRecentTrades(limit = 50) {
+  return recentTrades.slice(0, limit);
+}
+
+function addChatMessage(nick, message) {
+  const msg = {
+    id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    nick: (nick || '익명').slice(0, 20),
+    message: String(message).slice(0, 500),
+    time: new Date().toISOString()
+  };
+  chatMessages.unshift(msg);
+  if (chatMessages.length > MAX_CHAT) chatMessages.pop();
+  return msg;
+}
+
+function getChatMessages(limit = 100) {
+  return chatMessages.slice(0, limit);
+}
+
+function getSummary(source) {
+  const list = priceHistory[source] || [];
+  if (list.length === 0) return null;
+  const latest = list[list.length - 1];
+  const prev = list.length >= 2 ? list[list.length - 2] : null;
+  let changePercent = null;
+  if (prev && prev.avgPrice > 0) {
+    changePercent = ((latest.avgPrice - prev.avgPrice) / prev.avgPrice) * 100;
+  }
+  return {
+    source,
+    avgPrice: latest.avgPrice,
+    totalQuantity: latest.totalQuantity,
+    totalAmount: latest.totalAmount,
+    count: latest.count,
+    changePercent,
+    time: latest.time
+  };
+}
+
+async function runBarotemParse() {
+  resetIfNewDay();
+  const useBrowser = config.barotem && config.barotem.useBrowserParser === true;
+  const result = useBrowser
+    ? await barotemBrowser.fetchBarotemAllServersBrowser()
+    : await barotemParser.fetchBarotemAllServers();
+  const items = result.items || [];
+  lastBarotemByServer = result.byServer || [];
+  const count = items.length;
+  const totalAmount = items.reduce((s, i) => s + (i.price || 0), 0);
+  const totalQuantity = items.reduce((s, i) => s + (i.quantity || 0), 0);
+  const avgPrice = count > 0 ? totalAmount / count : 0;
+  addPriceSnapshot('barotem', { avgPrice, totalQuantity, totalAmount, count, items });
+  addTrades('barotem', items);
+  return { ...result, avgPrice, totalQuantity, totalAmount, count };
+}
+
+function getBarotemByServer() {
+  return lastBarotemByServer;
+}
+
+/** 브라우저 푸시로 서버 하나 갱신 (서버별 목록에 반영) */
+function pushBarotemByServer(serverCode, serverName, items) {
+  const list = lastBarotemByServer.filter((s) => String(s.serverCode) !== String(serverCode));
+  list.unshift({
+    serverCode,
+    serverName,
+    items: (items || []).map((it) => ({
+      quantity: Number(it.quantity) || 0,
+      price: Number(it.price) || 0
+    }))
+  });
+  lastBarotemByServer = list;
+}
+
+module.exports = {
+  addPriceSnapshot,
+  addTrades,
+  getPriceHistory,
+  getRecentTrades,
+  getBarotemByServer,
+  pushBarotemByServer,
+  addChatMessage,
+  getChatMessages,
+  getSummary,
+  runBarotemParse,
+  priceHistory,
+  recentTrades
+};
