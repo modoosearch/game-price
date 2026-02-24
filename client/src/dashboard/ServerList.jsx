@@ -16,7 +16,7 @@ export function ServerList({ byServer, selectedServerCode, onSelect }) {
           list.map((s, i) => {
             const avg = avgPrice(s.items);
             const pct = mockPctChange();
-            const name = s.serverName || SERVER_NAMES[i] ?? `서버 ${s.serverCode}`;
+            const name = (s.serverName || SERVER_NAMES[i]) ?? `서버 ${s.serverCode}`;
             const isSelected = Number(s.serverCode) === Number(selected);
             return (
               <li
