@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { SERVER_NAMES } from './serverNames';
 
 export function ServerChart({ serverCode, serverIndex, serverName, history, trades }) {
-  const name = serverName || SERVER_NAMES[serverIndex] ?? `서버 ${serverCode}`;
+  const name = (serverName || SERVER_NAMES[serverIndex]) ?? `서버 ${serverCode}`;
   const chartData = (history || []).map((d) => ({
     time: new Date(d.time).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
     가격: Math.round((d.avgPrice ?? 0) * 10) / 10
