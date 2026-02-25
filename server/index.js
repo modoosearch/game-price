@@ -189,13 +189,14 @@ wss.on('connection', (ws) => {
 const PARSE_INTERVAL_MS = config.parseIntervalMs ?? 60 * 1000;
 
 function runBarotemParseJob() {
+  console.log('[1min] barotem 수집 시작');
   store.runBarotemParse().then((result) => {
     broadcast({ type: 'prices', payload: { barotem: store.getSummary('barotem') } });
     broadcast({ type: 'trades', payload: store.getRecentTrades(20) });
     broadcast({ type: 'byServer', payload: store.getBarotemByServer() });
-    console.log('[1min] barotem parsed', result.count ?? 0, 'items');
+    console.log('[1min] barotem 완료 total=%d 신규반영=%d', result.count ?? 0, result.added ?? 0);
   }).catch((e) => {
-    console.error('[1min] parse error', e.message);
+    console.error('[1min] barotem parse error', e.message);
   });
 }
 

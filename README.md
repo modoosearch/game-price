@@ -39,6 +39,12 @@ VITE_API_BASE=https://my-game-api.onrender.com npm run build
 
 - `client/dist` 를 파일 호스팅에 올리고, Node 앱은 위 주소에서 계속 켜 두면 된다. (CORS는 서버에서 이미 허용 중)
 
+## 바로템 거래완료 데이터
+
+- **리스트가 오는 주소**: `productTable/2382r902` 한 번의 요청 (display=3 거래완료, opt1=서버코드).  
+  브라우저 F12 → Network → XHR에서 이 요청이 보이면 그게 곧 데이터. 자세한 찾는 법: **[docs/barotem-network.md](./docs/barotem-network.md)**.
+- **서버 수집**: 이 URL만 호출해 HTML 받음 → 파싱 → `server/data/barotem-snapshot.json` 저장. **1분마다** 이전 스냅샷과 비교해 **신규 거래만** 거래 내역에 반영.
+
 ## 바로템 수집 방식 (둘 중 하나)
 
 ### 1) 브라우저 열어두고 변동만 푸시 (권장, Render 등에서 그대로 사용 가능)

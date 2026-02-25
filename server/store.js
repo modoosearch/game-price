@@ -1,6 +1,11 @@
+const fs = require('fs');
+const path = require('path');
 const config = require('./config');
 const barotemParser = require('./parsers/barotem');
 const barotemBrowser = require('./parsers/barotem-browser');
+
+const SNAPSHOT_DIR = path.join(__dirname, 'data');
+const BAROTEM_SNAPSHOT_PATH = path.join(SNAPSHOT_DIR, 'barotem-snapshot.json');
 
 const priceHistory = { barotem: [] };
 const MAX_HISTORY = 24 * 60;
@@ -109,6 +114,24 @@ function getSummary(source) {
   };
 }
 
+function readBarotemSnapshot() {
+  try {
+    const raw = fs.readFileSync(BAROTEM_SNAPSHOT_PATH, 'utf8');
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeBarotemSnapshot(data) {
+  try {
+    if (!fs.existsSync(SNAPSHOT_DIR)) fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+    fs.writeFileSync(BAROTEM_SNAPSHOT_PATH, JSON.stringify(data, null, 0), 'utf8');
+  } catch (e) {
+    console.error('[store] barotem snapshot write failed', e.message);
+  }
+}
+
 async function runBarotemParse() {
   resetIfNewDay();
   const useBrowser = config.barotem && config.barotem.useBrowserParser === true;
@@ -117,13 +140,29 @@ async function runBarotemParse() {
     : await barotemParser.fetchBarotemAllServers();
   const items = result.items || [];
   lastBarotemByServer = result.byServer || [];
+
+  const prev = readBarotemSnapshot();
+  const prevByServer = {};
+  if (prev && Array.isArray(prev.byServer)) {
+    prev.byServer.forEach((s) => { prevByServer[String(s.serverCode)] = s.items || []; });
+  }
+  const newItems = [];
+  (result.byServer || []).forEach((s) => {
+    const prevIds = new Set((prevByServer[String(s.serverCode)] || []).map((i) => String(i.id)).filter(Boolean));
+    (s.items || []).forEach((it) => {
+      if (it.id && !prevIds.has(String(it.id))) newItems.push({ ...it, serverCode: s.serverCode });
+    });
+  });
+
   const count = items.length;
   const totalAmount = items.reduce((s, i) => s + (i.price || 0), 0);
   const totalQuantity = items.reduce((s, i) => s + (i.quantity || 0), 0);
   const avgPrice = count > 0 ? totalAmount / count : 0;
   addPriceSnapshot('barotem', { avgPrice, totalQuantity, totalAmount, count, items });
-  addTrades('barotem', items);
-  return { ...result, avgPrice, totalQuantity, totalAmount, count };
+  if (newItems.length > 0) addTrades('barotem', newItems);
+
+  writeBarotemSnapshot({ byServer: result.byServer, fetchedAt: result.fetchedAt });
+  return { ...result, avgPrice, totalQuantity, totalAmount, count, added: newItems.length };
 }
 
 function getBarotemByServer() {

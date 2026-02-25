@@ -45,6 +45,37 @@ function todayStr() {
   return new Date().toLocaleString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 10);
 }
 
+/**
+ * API가 JSON으로 줄 때: { code, rows: [{ number, baro_price, unit_price, reg_date, server, opt_goods_1, unitExcut, multi_cnt, ... }], paging, view } 
+ * 당일(reg_date 기준)만 추출, id/quantity/price 매핑
+ */
+function parseBarotemJson(data) {
+  if (!data || !Array.isArray(data.rows)) return [];
+  const today = todayStr();
+  const results = [];
+  for (const row of data.rows) {
+    const regDate = row.reg_date ? String(row.reg_date).trim().slice(0, 10) : '';
+    if (regDate !== today) continue;
+    const price = parseNumber(row.unit_price) ?? parseNumber(row.baro_price);
+    if (price == null) continue;
+    let quantity = 0;
+    if (row.unitExcut != null && row.unitExcut !== '') quantity = Number(row.unitExcut) || 0;
+    else if (row.multi_cnt) {
+      const raw = String(row.multi_cnt);
+      const num = parseNumber(raw);
+      if (num != null) quantity = raw.includes('만') ? Math.round(num * 10000) : num;
+    }
+    results.push({
+      id: row.number ? String(row.number) : null,
+      quantity,
+      price,
+      serverCode: row.opt_goods_1 ? String(row.opt_goods_1) : null,
+      serverName: row.server ? String(row.server).trim() : ''
+    });
+  }
+  return results;
+}
+
 /** "02월 24일" "16:58" 형태 파싱 후 당일 여부 */
 function isToday(dateStr) {
   if (!dateStr) return false;
@@ -178,19 +209,33 @@ async function fetchBarotem() {
   }
 }
 
-/** 팝니다·당일 거래완료: 서버 하나에 대해 목록 요청 후 물량/체결가 파싱 */
+/** 팝니다·당일 거래완료: 서버 하나에 대해 목록 요청. 응답이 JSON(rows)이면 그대로 파싱, 아니면 HTML 파싱 */
 async function fetchBarotemForServer(serverCode) {
   const display = config.barotem.displayCompleted ?? 3;
   const url = buildUrl({ opt1: String(serverCode), display });
   try {
-    const { data } = await axios.get(url, {
-      headers: { 'User-Agent': USER_AGENT },
-      timeout: 15000
+    const { data, status } = await axios.get(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'application/json'
+      },
+      timeout: 15000,
+      validateStatus: () => true
     });
-    const items = await parseBarotemPage(data);
+    let items = [];
+    if (data && typeof data === 'object' && Array.isArray(data.rows)) {
+      items = parseBarotemJson(data);
+      console.log('[barotem] server=%s HTTP=%s JSON rows=%d 당일=%d', serverCode, status, data.rows.length, items.length);
+    } else {
+      const html = typeof data === 'string' ? data : (data && JSON.stringify(data)) || '';
+      const hasBlock = /newlists_goods_content|di_no_i/.test(html);
+      const hasLogin = /로그인|login|캡차|captcha/i.test(html);
+      items = await parseBarotemPage(html);
+      console.log('[barotem] server=%s HTTP=%s HTML len=%d block=%s login=%s → parsed=%d', serverCode, status, html.length, hasBlock, hasLogin, items.length);
+    }
     return { serverCode, items, fetchedAt: new Date().toISOString() };
   } catch (err) {
-    console.error(`Barotem fetch server ${serverCode} error:`, err.message);
+    console.error('[barotem] server=%s error:', serverCode, err.message);
     return { serverCode, items: [], error: err.message, fetchedAt: new Date().toISOString() };
   }
 }
@@ -198,13 +243,23 @@ async function fetchBarotemForServer(serverCode) {
 /** 팝니다·서버별 당일 거래완료 전체 수집 (거래 물량 + 체결가) */
 async function fetchBarotemAllServers() {
   const servers = config.barotem.servers || [];
+  if (servers.length === 0) {
+    console.log('[barotem] servers 목록 비어 있음');
+    return { source: 'barotem', byServer: [], items: [], fetchedAt: new Date().toISOString() };
+  }
+  const delayMs = config.barotem.serverDelayMs ?? 1500;
   const byServer = [];
   const allItems = [];
-  for (const serverCode of servers) {
+  for (let i = 0; i < servers.length; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, delayMs));
+    const serverCode = servers[i];
     const result = await fetchBarotemForServer(serverCode);
     byServer.push({ serverCode, items: result.items, error: result.error });
     (result.items || []).forEach((item) => allItems.push({ ...item, serverCode }));
   }
+  const total = allItems.length;
+  const withError = byServer.filter((s) => s.error).length;
+  console.log('[barotem] 전체 서버=%d 에러=%d 총 파싱=%d건', servers.length, withError, total);
   return {
     source: 'barotem',
     byServer,
