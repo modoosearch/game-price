@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         바로템 시세 푸시 (거래완료물품 - 서버별 수집)
-// @description  바로템 거래완료물품을 서버별 URL로 fetch 해서 서버명·거래량·가격·날짜 파싱 후 gameprice.onrender.com 으로 푸시
+// @description  바로템 거래완료물품을 서버별 URL로 fetch 해서 서버명·거래량·가격·날짜 파싱 후 aden.infosearch.kr 으로 푸시
 // @match        https://www.barotem.com/*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
 
 (function () {
-  var API_BASE = 'https://gameprice.onrender.com';
+  var API_BASE = 'https://aden.infosearch.kr';
   var TABLE_URL = 'https://www.barotem.com/product/productTable/2382r902';
   var DISPLAY = 3; // 거래완료물품
   var SERVER_DELAY_MS = 2000;

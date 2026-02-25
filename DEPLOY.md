@@ -26,7 +26,7 @@ npm start
    - **Build Command**: `npm run install:all && npm run build`
    - **Start Command**: `npm start`
    - **Environment**: `NODE_VERSION` = `20` (또는 18)
-4. Deploy 후 나온 URL로 접속 (예: `https://gameprice.onrender.com`)
+4. Deploy 후 나온 URL로 접속 (예: `https://aden.infosearch.kr` 또는 `https://gameprice.onrender.com`)
 
 **Render 기본 URL(.onrender.com) 변경**: 서비스 생성 시 정해진 주소는 **이후에 바꿀 수 없습니다**. [Render 문서](https://community.render.com/t/how-do-i-change-url-of-a-web-service/11980) 기준, 서비스 이름을 바꿔도 URL 슬러그는 그대로입니다.  
 - **쓰고 싶은 주소가 있으면** → 해당 서비스에 **Custom Domain**을 추가하세요 (예: `adn.infosearch.kr`). 대시보드 → 서비스 → **Settings → Custom Domains**에서 추가 후, 네임서버/호스팅에서 CNAME 또는 A 레코드로 연결하면 됩니다.  
