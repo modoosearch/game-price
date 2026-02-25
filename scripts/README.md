@@ -13,7 +13,7 @@
 스크립트 상단 `API_BASE` 를 커스텀 도메인으로 바꾸면 됩니다.
 
 ```javascript
-var API_BASE = 'https://game-price.onrender.com';  // 또는 https://adn.infosearch.kr
+var API_BASE = 'https://gameprice.onrender.com';  // 또는 https://aden.infosearch.kr
 ```
 
 ## 파싱 정보 (항목당)

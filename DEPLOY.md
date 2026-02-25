@@ -26,7 +26,7 @@ npm start
    - **Build Command**: `npm run install:all && npm run build`
    - **Start Command**: `npm start`
    - **Environment**: `NODE_VERSION` = `20` (또는 18)
-4. Deploy 후 나온 URL로 접속 (예: `https://game-price.onrender.com`)
+4. Deploy 후 나온 URL로 접속 (예: `https://gameprice.onrender.com`)
 
 **Render 기본 URL(.onrender.com) 변경**: 서비스 생성 시 정해진 주소는 **이후에 바꿀 수 없습니다**. [Render 문서](https://community.render.com/t/how-do-i-change-url-of-a-web-service/11980) 기준, 서비스 이름을 바꿔도 URL 슬러그는 그대로입니다.  
 - **쓰고 싶은 주소가 있으면** → 해당 서비스에 **Custom Domain**을 추가하세요 (예: `adn.infosearch.kr`). 대시보드 → 서비스 → **Settings → Custom Domains**에서 추가 후, 네임서버/호스팅에서 CNAME 또는 A 레코드로 연결하면 됩니다.  
@@ -36,7 +36,7 @@ npm start
 - **주소 철자**: `adn.infosearch.kr` 인지 확인 (예: `aden` 오타 시 연결 안 됨).  
 - **Render 쪽 도메인**: Custom Domains에 **접속하려는 주소와 똑같이** 등록 (예: `adn.infosearch.kr`).  
 - **네임서버 설정**:  
-  - **CNAME**을 쓸 때 `game-price.onrender.com`(하이픈 포함)이 일부 DNS에서 거부되면, **A 레코드**로 **216.24.57.1** 지정해서 쓰면 됩니다.  
+  - **CNAME**을 쓸 때 `gameprice.onrender.com`(하이픈 포함)이 일부 DNS에서 거부되면, **A 레코드**로 **216.24.57.1** 지정해서 쓰면 됩니다.  
 - **전파 대기**: DNS 변경 후 최대 24~48시간 걸릴 수 있음.  
 - **캐시**: 브라우저 시크릿/다른 기기에서 `https://adn.infosearch.kr` 접속 테스트.
 
