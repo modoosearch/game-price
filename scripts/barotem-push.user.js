@@ -7,7 +7,7 @@
 // ==/UserScript==
 
 (function () {
-  var API_BASE = 'https://game-price.onrender.com';
+  var API_BASE = 'https://gameprice.onrender.com';
   var TABLE_URL = 'https://www.barotem.com/product/productTable/2382r902';
   var DISPLAY = 3; // 거래완료물품
   var PAGE_DELAY_MS = 600;
