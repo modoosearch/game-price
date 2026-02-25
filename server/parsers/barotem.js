@@ -42,8 +42,7 @@ function parseNumber(str) {
 }
 
 function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  return new Date().toLocaleString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 10);
 }
 
 /** "02월 24일" "16:58" 형태 파싱 후 당일 여부 */
@@ -66,12 +65,43 @@ function isToday(dateStr) {
 
 /**
  * 물품리스트 > 거래완료물품 구조 파싱
- * - ul.di_no_i 있으면: 블록 단위로 만당 가격·수량·날짜 추출
- * - 없으면: "만당 N원" + "N월 N일" 조합으로 fallback (AJAX로 리스트만 오는 경우 대비)
+ * - .lists_product_contents a.newlists_goods_content (물품 게시판 한 행): 만당·수량·NN월 NN일 추출
+ * - 없으면 ul.di_no_i 블록 단위 fallback
  */
 async function parseBarotemPage(html) {
   const $ = cheerio.load(html);
   const results = [];
+  const today = todayStr();
+
+  $('a.newlists_goods_content').each((_, blockEl) => {
+    const $block = $(blockEl);
+    const dateDiv = $block.find('div').filter((i, el) => /\d{1,2}월\s*\d{1,2}일/.test($(el).text()));
+    const dateStr = dateDiv.length ? dateDiv.last().text().trim() : '';
+    if (!isToday(dateStr)) return;
+
+    let price = null;
+    $block.find('span').each((__, spanEl) => {
+      const raw = $(spanEl).text().trim();
+      if (/만당\s*[\d,]+|만당\s*[\d,]+원/.test(raw)) {
+        const num = parseNumber(raw);
+        if (num != null) price = num;
+      }
+    });
+    if (price == null) return;
+
+    let quantity = 0;
+    $block.find('span').each((__, spanEl) => {
+      const raw = $(spanEl).text().trim();
+      if (raw.includes('수량 부족')) return;
+      if (raw.includes('아데나')) {
+        const num = parseNumber(raw);
+        if (num != null) quantity = raw.includes('만') ? Math.round(num * 10000) : num;
+      }
+    });
+    const id = $block.attr('id') ? String($block.attr('id')) : null;
+    results.push({ id, quantity, price });
+  });
+  if (results.length > 0) return results;
 
   $('ul.di_no_i').each((_, ulEl) => {
     const $ul = $(ulEl);

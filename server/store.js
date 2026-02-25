@@ -12,9 +12,10 @@ const MAX_CHAT = 200;
 
 let currentDayKey = getCurrentDayKey();
 
+/** 당일 기준: 새벽 00:00(KST)~다음날 00:00 전까지 수집, 다음날 00:00 되면 자동 초기화 후 그날 것만 파싱 반복 */
 function getCurrentDayKey() {
   const now = new Date();
-  return now.toISOString().slice(0, 10);
+  return now.toLocaleString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 10);
 }
 
 function resetIfNewDay() {
@@ -129,13 +130,14 @@ function getBarotemByServer() {
   return lastBarotemByServer;
 }
 
-/** 브라우저 푸시로 서버 하나 갱신 (서버별 목록에 반영) */
+/** 브라우저 푸시로 서버 하나 갱신 (서버별 목록에 반영, id 있으면 병합용으로 보관) */
 function pushBarotemByServer(serverCode, serverName, items) {
   const list = lastBarotemByServer.filter((s) => String(s.serverCode) !== String(serverCode));
   list.unshift({
     serverCode,
     serverName,
     items: (items || []).map((it) => ({
+      id: it.id ? String(it.id) : undefined,
       quantity: Number(it.quantity) || 0,
       price: Number(it.price) || 0
     }))

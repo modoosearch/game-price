@@ -5,7 +5,7 @@
  */
 module.exports = {
   barotem: {
-    listUrl: 'https://www.barotem.com/product/lists/2382r902',
+    listUrl: 'https://www.barotem.com/product/productTable/2382r902',
     /** 서버 opt1 코드 순서 (팝니다·거래완료 수집용) */
     servers: [24487, 24488, 24489, 24490, 24491, 24492, 24493, 24494, 24495, 24496, 24527, 24528, 24529, 24530, 24531, 24575, 24576, 24577, 24578, 24579, 24609, 24610, 24611, 24612, 24613],
     /** select.title_options_all: 1=전체, 2=거래가능, 3=거래완료물품 */

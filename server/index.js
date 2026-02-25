@@ -54,33 +54,53 @@ app.post('/api/chat', (req, res) => {
   res.json(msg);
 });
 
-/** 브라우저(사용자 스크립트/확장 등)에서 바로템 DOM을 파싱해 푸시하는 엔드포인트 */
+/** 브라우저(사용자 스크립트)에서 바로템 DOM 파싱해 푸시. id 있으면 기존과 병합(새 건만 추가) */
 app.post('/api/collect/barotem/push', (req, res) => {
   try {
     const { serverCode, serverName, items } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
-      return res.json({ ok: true, count: 0 });
+      return res.json({ ok: true, count: 0, added: 0 });
     }
     const normalized = items.map((it) => ({
+      id: it.id ? String(it.id) : null,
       quantity: Number(it.quantity) || 0,
       price: Number(it.price) || 0,
       serverCode,
       serverName
     }));
-    const count = normalized.length;
-    const totalAmount = normalized.reduce((s, i) => s + (i.price || 0), 0);
-    const totalQuantity = normalized.reduce((s, i) => s + (i.quantity || 0), 0);
-    const avgPrice = count > 0 ? totalAmount / count : 0;
 
-    store.addTrades('barotem', normalized);
-    store.addPriceSnapshot('barotem', { avgPrice, totalQuantity, totalAmount, count, items: normalized });
-    store.pushBarotemByServer(serverCode, serverName || '', normalized);
+    const existing = store.getBarotemByServer().find((s) => String(s.serverCode) === String(serverCode));
+    const existingIds = new Set((existing?.items || []).map((i) => i.id).filter(Boolean));
+    const newItems = normalized.filter((it) => it.id && !existingIds.has(it.id));
+    const merged = [];
+    const seen = new Set();
+    normalized.forEach((it) => {
+      merged.push({ quantity: it.quantity, price: it.price, id: it.id });
+      if (it.id) seen.add(it.id);
+    });
+    (existing?.items || []).forEach((it) => {
+      const id = it.id;
+      if (id && seen.has(id)) return;
+      if (id) seen.add(id);
+      merged.push({ quantity: it.quantity ?? 0, price: it.price ?? 0, id });
+    });
+
+    if (newItems.length > 0) {
+      const forTrades = newItems.map((it) => ({ quantity: it.quantity, price: it.price, serverCode, serverName }));
+      store.addTrades('barotem', forTrades);
+    }
+    const totalAmount = merged.reduce((s, i) => s + (i.price || 0), 0);
+    const totalQuantity = merged.reduce((s, i) => s + (i.quantity || 0), 0);
+    const count = merged.length;
+    const avgPrice = count > 0 ? totalAmount / count : 0;
+    store.addPriceSnapshot('barotem', { avgPrice, totalQuantity, totalAmount, count, items: merged });
+    store.pushBarotemByServer(serverCode, serverName || '', merged);
 
     broadcast({ type: 'prices', payload: { barotem: store.getSummary('barotem') } });
     broadcast({ type: 'trades', payload: store.getRecentTrades(20) });
     broadcast({ type: 'byServer', payload: store.getBarotemByServer() });
 
-    res.json({ ok: true, count, avgPrice, totalQuantity, totalAmount });
+    res.json({ ok: true, count, added: newItems.length, avgPrice, totalQuantity, totalAmount });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

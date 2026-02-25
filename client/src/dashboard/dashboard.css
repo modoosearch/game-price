@@ -55,6 +55,15 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+.dashboard-parse-status {
+  margin-left: 10px;
+  font-size: 0.85rem;
+  color: var(--d-muted);
+  max-width: 420px;
+}
+.dashboard-parse-status.err {
+  color: #ef4444;
+}
 
 .dashboard-body {
   display: flex;

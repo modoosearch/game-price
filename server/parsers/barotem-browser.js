@@ -50,15 +50,13 @@ function getExtractScript(today) {
         serverName = (p && p.textContent) ? p.textContent.trim() : '';
       }
       var items = [];
-      var uls = document.querySelectorAll('ul.di_no_i');
-      for (var i = 0; i < uls.length; i++) {
-        var ul = uls[i];
-        var block = ul.closest('li') || ul.closest('.item') || ul.closest('[class*="list"]') || ul.parentElement;
-        if (!block) continue;
+      var blocks = document.querySelectorAll('a.newlists_goods_content');
+      for (var i = 0; i < blocks.length; i++) {
+        var block = blocks[i];
         var dateDiv = null;
         var divs = block.querySelectorAll('div');
         for (var j = 0; j < divs.length; j++) {
-          if (/\\d{1,2}월\\s*\\d{1,2}일/.test(divs[j].textContent || '')) { dateDiv = divs[j]; break; }
+          if (/\\d{1,2}월\\s*\\d{1,2}일/.test(divs[j].textContent || '')) dateDiv = divs[j];
         }
         if (!dateDiv) continue;
         var dateText = (dateDiv.textContent || '').replace(/\\s/g, ' ');
@@ -67,21 +65,48 @@ function getExtractScript(today) {
         var y = new Date().getFullYear();
         var parsed = y + '-' + m[1].padStart(2,'0') + '-' + m[2].padStart(2,'0');
         if (parsed !== todayStr) continue;
-
         var price = null, quantity = 0;
         var spans = block.querySelectorAll('span');
         for (var k = 0; k < spans.length; k++) {
           var t = (spans[k].textContent || '').trim();
-          if (/만당\\s*[\\d,]+/.test(t)) {
-            var num = parseFloat(t.replace(/[^\\d.]/g, ''));
-            if (!isNaN(num)) price = num;
-          }
+          if (/만당\\s*[\\d,]+/.test(t)) { var num = parseFloat(t.replace(/[^\\d.]/g, '')); if (!isNaN(num)) price = num; }
           if (t.indexOf('수량 부족') === -1 && t.indexOf('아데나') !== -1) {
             var n = parseFloat(t.replace(/[^\\d.]/g, ''));
             if (!isNaN(n)) quantity = t.indexOf('만') !== -1 ? Math.round(n * 10000) : n;
           }
         }
         if (price != null) items.push({ quantity: quantity, price: price });
+      }
+      if (items.length === 0) {
+        var uls = document.querySelectorAll('ul.di_no_i');
+        for (var i = 0; i < uls.length; i++) {
+          var ul = uls[i];
+          var block = ul.closest('li') || ul.closest('.item') || ul.closest('[class*="list"]') || ul.parentElement;
+          if (!block) continue;
+          var dateDiv = null;
+          var divs = block.querySelectorAll('div');
+          for (var j = 0; j < divs.length; j++) {
+            if (/\\d{1,2}월\\s*\\d{1,2}일/.test(divs[j].textContent || '')) { dateDiv = divs[j]; break; }
+          }
+          if (!dateDiv) continue;
+          var dateText = (dateDiv.textContent || '').replace(/\\s/g, ' ');
+          var m = dateText.match(/(\\d{1,2})월\\s*(\\d{1,2})일/);
+          if (!m) continue;
+          var y = new Date().getFullYear();
+          var parsed = y + '-' + m[1].padStart(2,'0') + '-' + m[2].padStart(2,'0');
+          if (parsed !== todayStr) continue;
+          var price = null, quantity = 0;
+          var spans = block.querySelectorAll('span');
+          for (var k = 0; k < spans.length; k++) {
+            var t = (spans[k].textContent || '').trim();
+            if (/만당\\s*[\\d,]+/.test(t)) { var num = parseFloat(t.replace(/[^\\d.]/g, '')); if (!isNaN(num)) price = num; }
+            if (t.indexOf('수량 부족') === -1 && t.indexOf('아데나') !== -1) {
+              var n = parseFloat(t.replace(/[^\\d.]/g, ''));
+              if (!isNaN(n)) quantity = t.indexOf('만') !== -1 ? Math.round(n * 10000) : n;
+            }
+          }
+          if (price != null) items.push({ quantity: quantity, price: price });
+        }
       }
       return { serverName: serverName, items: items };
     })('${today}')

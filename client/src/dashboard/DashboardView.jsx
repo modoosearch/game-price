@@ -13,6 +13,7 @@ export default function DashboardView() {
   const [chatMessages, setChatMessages] = useState([]);
   const [selectedServerCode, setSelectedServerCode] = useState(null);
   const [parsing, setParsing] = useState(false);
+  const [parseMessage, setParseMessage] = useState('');
 
   const handleWs = useCallback((msg) => {
     switch (msg.type) {
@@ -69,19 +70,30 @@ export default function DashboardView() {
           disabled={parsing}
           onClick={async () => {
             setParsing(true);
+            setParseMessage('');
             try {
-              await triggerParse();
+              const result = await triggerParse();
               const [by, , t, ch] = await Promise.all([getByServer(), getSummary(), getTrades(50), getChat(100)]);
               if (by?.length) setByServer(by);
               setTrades(t || []);
               setChatMessages(ch || []);
+              const count = result?.count ?? 0;
+              setParseMessage(count > 0 ? `수집 완료 ${count}건` : '0건 수집됨');
+            } catch (e) {
+              setParseMessage('수집 실패: ' + (e?.message || '서버 연결 확인'));
             } finally {
               setParsing(false);
+              setTimeout(() => setParseMessage(''), 6000);
             }
           }}
         >
           {parsing ? '수집 중…' : '지금 수집'}
         </button>
+        {parseMessage && (
+          <span className={`dashboard-parse-status ${parseMessage.startsWith('수집 실패') ? 'err' : 'ok'}`}>
+            {parseMessage}
+          </span>
+        )}
       </header>
 
       <div className="dashboard-body">
