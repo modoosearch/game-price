@@ -120,13 +120,22 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ serverCode: serverCode, serverName: serverName, items: items })
-    }).then(function (r) { return r.json(); });
+    })
+      .then(function (r) {
+        if (!r.ok) console.warn('[바로템 푸시] API HTTP', r.status, r.statusText);
+        return r.json();
+      })
+      .catch(function (e) {
+        console.warn('[바로템 푸시] API 요청 실패 (네트워크/CORS 등)', e.message);
+        return { ok: false, error: e.message };
+      });
   }
 
   function collectAll() {
     var today = todayStr();
     var doFullScan = today !== lastFullScanDay;
     if (doFullScan) lastFullScanDay = today;
+    console.log('[바로템 푸시] 수집 시도 시작', doFullScan ? '(풀스캔)' : '(추가체크)', '당일=' + today);
 
     var idx = 0;
     function next() {
@@ -139,20 +148,27 @@
       idx++;
 
       var url1 = buildUrl(serverCode, 1);
+      console.log('[바로템 푸시] fetch', serverNameFallback, 'opt1=' + serverCode);
       fetch(url1, { credentials: 'same-origin' })
-        .then(function (r) { return r.text(); })
+        .then(function (r) {
+          if (!r.ok) console.warn('[바로템 푸시] HTTP', r.status, serverNameFallback);
+          return r.text();
+        })
         .then(function (html1) {
+          var blockCount = (html1.match(/newlists_goods_content/g) || []).length;
+          console.log('[바로템 푸시] 수신', serverNameFallback, 'HTML길이=' + html1.length, '블록(대략)=' + blockCount);
           var parser = new DOMParser();
           var doc1 = parser.parseFromString(html1, 'text/html');
           var allItems = parseItemsFromDoc(doc1, serverCode, serverNameFallback, today);
+          console.log('[바로템 푸시] 파싱', serverNameFallback, '당일거래=' + allItems.length + '건');
 
-          if (allItems.length === 0 && idx === 1) {
-            console.log('[바로템 푸시] 1페이지 파싱 0건 - 바로템 페이지 구조/당일 여부 확인');
+          if (allItems.length === 0 && blockCount === 0) {
+            console.warn('[바로템 푸시] 페이지에 newlists_goods_content 없음 - URL/거래완료 선택 여부 확인');
           }
 
           if (!doFullScan) {
             return pushOne(serverCode, serverNameFallback, allItems).then(function (data) {
-              if (data && data.added > 0) console.log('[바로템 푸시]', serverNameFallback, '+', data.added, '건');
+              console.log('[바로템 푸시] 푸시응답', serverNameFallback, data && data.ok ? 'ok count=' + (data.count) + ' added=' + (data.added) : (data && data.error) || 'fail');
               return delay(SERVER_DELAY_MS);
             });
           }
@@ -160,7 +176,7 @@
           var maxPage = getMaxPage(doc1);
           if (maxPage <= 1) {
             return pushOne(serverCode, serverNameFallback, allItems).then(function (data) {
-              if (allItems.length > 0 && data && data.ok !== false) console.log('[바로템 푸시]', serverNameFallback, allItems.length, '건');
+              console.log('[바로템 푸시] 푸시응답', serverNameFallback, allItems.length + '건', data && data.ok ? 'ok' : (data && data.error) || '');
               return delay(SERVER_DELAY_MS);
             });
           }
@@ -169,7 +185,7 @@
           function fetchNext() {
             if (page > maxPage) {
               return pushOne(serverCode, serverNameFallback, allItems).then(function (data) {
-                if (allItems.length > 0 && data && data.ok !== false) console.log('[바로템 푸시]', serverNameFallback, allItems.length, '건 (1~' + maxPage + 'p)');
+                console.log('[바로템 푸시] 푸시응답', serverNameFallback, '총' + allItems.length + '건(1~' + maxPage + 'p)', data && data.ok ? 'ok' : (data && data.error) || '');
                 return delay(SERVER_DELAY_MS);
               });
             }
@@ -187,7 +203,7 @@
         })
         .then(function () { next(); })
         .catch(function (e) {
-          console.warn('[바로템 푸시] 서버 ' + serverCode + ' 실패', e.message);
+          console.warn('[바로템 푸시] 서버 ' + serverCode + ' ' + serverNameFallback + ' 실패', e.message);
           delay(SERVER_DELAY_MS).then(next);
         });
     }

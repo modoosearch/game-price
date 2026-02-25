@@ -59,8 +59,10 @@ app.post('/api/collect/barotem/push', (req, res) => {
   try {
     const { serverCode, serverName, items } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
+      console.log('[push] 수신 serverCode=%s items=0건 (비어있음)', serverCode);
       return res.json({ ok: true, count: 0, added: 0 });
     }
+    console.log('[push] 수신 serverCode=%s serverName=%s items=%d건', serverCode, serverName || '', items.length);
     const normalized = items.map((it) => ({
       id: it.id ? String(it.id) : null,
       quantity: Number(it.quantity) || 0,
@@ -100,8 +102,10 @@ app.post('/api/collect/barotem/push', (req, res) => {
     broadcast({ type: 'trades', payload: store.getRecentTrades(20) });
     broadcast({ type: 'byServer', payload: store.getBarotemByServer() });
 
+    console.log('[push] 반영 serverCode=%s count=%d added=%d', serverCode, count, newItems.length);
     res.json({ ok: true, count, added: newItems.length, avgPrice, totalQuantity, totalAmount });
   } catch (e) {
+    console.error('[push] 에러', e.message);
     res.status(500).json({ error: e.message });
   }
 });
