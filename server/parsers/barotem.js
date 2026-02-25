@@ -217,15 +217,23 @@ async function fetchBarotemForServer(serverCode) {
     const { data, status } = await axios.get(url, {
       headers: {
         'User-Agent': USER_AGENT,
-        Accept: 'application/json'
+        Accept: 'application/json',
+        Referer: 'https://www.barotem.com/',
+        Origin: 'https://www.barotem.com'
       },
       timeout: 15000,
       validateStatus: () => true
     });
     let items = [];
-    if (data && typeof data === 'object' && Array.isArray(data.rows)) {
-      items = parseBarotemJson(data);
-      console.log('[barotem] server=%s HTTP=%s JSON rows=%d 당일=%d', serverCode, status, data.rows.length, items.length);
+    let parsed = data;
+    if (typeof data === 'string') {
+      try {
+        parsed = JSON.parse(data);
+      } catch (_) {}
+    }
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.rows)) {
+      items = parseBarotemJson(parsed);
+      console.log('[barotem] server=%s HTTP=%s JSON rows=%d 당일=%d', serverCode, status, parsed.rows.length, items.length);
     } else {
       const html = typeof data === 'string' ? data : (data && JSON.stringify(data)) || '';
       const hasBlock = /newlists_goods_content|di_no_i/.test(html);
